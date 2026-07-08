@@ -1,0 +1,56 @@
+# Model matrix for the cost-per-successful-task benchmark.
+#
+# Each entry is model-agnostic via the OpenAI-compatible protocol: set base_url,
+# the provider model id, and which env var holds the API key. Pricing is USD per
+# 1M tokens and is the single source of truth for the Python cost math; mirror
+# these same numbers into Arize AX's model-cost settings so the dashboard agrees.
+#
+# Prices verified 2026-07-07:
+#   Fireworks serverless: https://docs.fireworks.ai/serverless/pricing
+#   OpenAI API:           GPT-5.5 $5/$30, GPT-5.4 $2.50/$15, GPT-5 $1.25/$10
+
+defaults:
+  max_steps: 40
+  command_timeout_sec: 120
+  # Guardrails (overridable per run / CLI). Token cap is the primary fairness
+  # lever; wall-clock is a generous safety net, not the binding constraint.
+  token_cap: 200000
+  wall_clock_cap_sec: 900
+
+models:
+  # --- Fireworks: open models ---
+  fw-gpt-oss-120b:
+    provider: fireworks
+    model: accounts/fireworks/models/gpt-oss-120b
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    pricing: {input_per_mtok: 0.15, output_per_mtok: 0.60}
+
+  fw-kimi-k2p6:
+    provider: fireworks
+    model: accounts/fireworks/models/kimi-k2p6
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    pricing: {input_per_mtok: 0.95, output_per_mtok: 4.00}
+
+  fw-deepseek-v4-pro:
+    provider: fireworks
+    model: accounts/fireworks/models/deepseek-v4-pro
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    pricing: {input_per_mtok: 1.74, output_per_mtok: 3.48}
+
+  # --- OpenAI: frontier comparison ---
+  oai-gpt-5.5:
+    provider: openai
+    model: gpt-5.5
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    pricing: {input_per_mtok: 5.00, output_per_mtok: 30.00}
+
+  oai-gpt-5:
+    provider: openai
+    model: gpt-5
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    pricing: {input_per_mtok: 1.25, output_per_mtok: 10.00}

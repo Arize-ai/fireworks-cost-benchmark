@@ -1,0 +1,20 @@
+# Cost-per-successful-task subset (Terminal-Bench tasks).
+# Each task was validated by running its own oracle solution.sh through this
+# harness and confirming it grades PASS. Spread across difficulty so some models
+# pass and some fail — the band where cost-per-successful-task is meaningful.
+
+# --- easy (anchors the pass end; cost still varies run-to-run) ---
+csv-to-parquet
+jsonl-aggregator
+heterogeneous-dates
+
+# --- medium (the discriminating band) ---
+log-summary-date-ranges
+multi-source-data-merger
+ode-solver-rk4
+huarong-dao-solver
+largest-eigenval
+crack-7z-hash
+
+# --- hard (separates strong from weak models) ---
+feal-linear-cryptanalysis

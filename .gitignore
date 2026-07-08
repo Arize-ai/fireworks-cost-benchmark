@@ -1,0 +1,18 @@
+# secrets & local machine config
+.env
+.claude/settings.local.json
+
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+
+# Terminal-Bench task source (cloned separately; large, external, not our code)
+.tb-src/
+
+# transient/ad-hoc run artifacts — but keep the committed benchmark_*.jsonl
+# results and the subset-selection record below.
+results/*.log
+!results/subset_validation.log
+results/run_*.jsonl
+.arize-tmp-traces/

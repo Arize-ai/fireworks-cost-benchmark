@@ -1,0 +1,17 @@
+TASK                               DIFF    VERDICT                        SECS
+csv-to-parquet                     easy    OK                               14
+jsonl-aggregator                   easy    OK                               12
+pandas-sql-query                   easy    OK                               19
+jq-data-processing                 easy    OK                               16
+heterogeneous-dates                easy    OK                               14
+mixed-integer-programming          easy    oracle_timeout                  423
+log-summary-date-ranges            medium  OK                               12
+multi-source-data-merger           medium  OK                               33
+ode-solver-rk4                     medium  OK                                9
+huarong-dao-solver                 medium  OK                               20
+largest-eigenval                   medium  OK                               15
+crack-7z-hash                      medium  OK                              172
+feal-linear-cryptanalysis          hard    OK                               23
+password-recovery                  hard    ORACLE_FAIL(tests)               14
+
+harness-compatible (12): csv-to-parquet jsonl-aggregator pandas-sql-query jq-data-processing heterogeneous-dates log-summary-date-ranges multi-source-data-merger ode-solver-rk4 huarong-dao-solver largest-eigenval crack-7z-hash feal-linear-cryptanalysis

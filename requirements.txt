@@ -1,0 +1,16 @@
+# Agent: OpenAI-compatible client (works with Fireworks, OpenAI, xAI, etc.)
+openai>=1.50.0
+
+# Config / env
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# Observability (Arize AX + OpenInference)
+arize-otel>=0.7.0
+openinference-instrumentation-openai>=0.1.18
+openinference-semantic-conventions>=0.1.29
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp>=1.27.0
+
+# Reporting
+rich>=13.0
