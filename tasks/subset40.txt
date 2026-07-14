@@ -1,0 +1,61 @@
+# Cost-per-successful-task LARGE subset: 40 Terminal-Bench tasks.
+#
+# Superset of tasks/subset.txt (the published 10-task study). Each task was
+# oracle-validated on 2026-07-14 by running its own solution.sh through this
+# harness and confirming a PASS grade. Difficulty spread 8 easy / 20 medium /
+# 12 hard, weighted to the discriminating medium/hard band where models diverge.
+#
+# Provenance: the original 10 (from subset.txt) plus 30 new tasks selected
+# deterministically (seed 42) from the 139 clean candidates (has oracle, not
+# interactive-TUI, not heavy/non-arm64) and validated. Of 50 candidates run,
+# 36 passed; 14 dropped (oracle failed to grade cleanly through the harness).
+# From the 36 passers, 6 were held out to hit the difficulty target: 5 heavy
+# GPU/training-style tasks likely to be wall-clock-bound on CPU-only arm64
+# (cartpole-rl-training, hf-train-lora-adapter, torch-pipeline-parallelism,
+# torch-tensor-parallelism, video-processing) and 1 easy (prove-plus-comm).
+
+# --- easy (8): anchors the pass end ---
+csv-to-parquet
+jsonl-aggregator
+heterogeneous-dates
+grid-pattern-transform
+jq-data-processing
+mahjong-winninghand
+mlflow-register
+pandas-etl
+
+# --- medium (20): the discriminating band ---
+log-summary-date-ranges
+multi-source-data-merger
+ode-solver-rk4
+huarong-dao-solver
+largest-eigenval
+crack-7z-hash
+acl-permissions-inheritance
+adaptive-rejection-sampler
+chess-best-move
+gcc-compiler-optimization
+git-multibranch
+hf-model-inference
+kv-store-grpc
+pcap-to-netflow
+play-lord
+reshard-c4-data
+solve-sudoku
+train-bpe-tokenizer
+tree-directory-parser
+tune-mjcf
+
+# --- hard (12): separates strong from weak models ---
+feal-linear-cryptanalysis
+bn-fit-modify
+cancel-async-tasks
+circuit-fibsqrt
+configure-git-webserver
+fix-ocaml-gc
+gpt2-codegolf
+model-extraction-relu-logits
+path-tracing-reverse
+regex-chess
+sparql-university
+stable-parallel-kmeans

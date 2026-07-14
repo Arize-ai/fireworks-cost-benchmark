@@ -155,8 +155,9 @@ def run_agent(
 
         assistant_msg: dict = {"role": "assistant", "content": msg.content or ""}
         if msg.tool_calls:
-            assistant_msg["tool_calls"] = [
-                {
+            tcs: list[dict] = []
+            for tc in msg.tool_calls:
+                d: dict = {
                     "id": tc.id,
                     "type": "function",
                     "function": {
@@ -164,8 +165,15 @@ def run_agent(
                         "arguments": tc.function.arguments,
                     },
                 }
-                for tc in msg.tool_calls
-            ]
+                # Faithfully echo back any provider-specific payload the model
+                # attached to its tool call. Gemini's thinking models return a
+                # thought_signature here and 400 on the next turn if it is not
+                # returned verbatim; other providers simply omit it.
+                extra = getattr(tc, "extra_content", None)
+                if extra:
+                    d["extra_content"] = extra
+                tcs.append(d)
+            assistant_msg["tool_calls"] = tcs
         messages.append(assistant_msg)
 
         if not msg.tool_calls:

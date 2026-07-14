@@ -8,6 +8,13 @@
 # Prices verified 2026-07-07:
 #   Fireworks serverless: https://docs.fireworks.ai/serverless/pricing
 #   OpenAI API:           GPT-5.5 $5/$30, GPT-5.4 $2.50/$15, GPT-5 $1.25/$10
+#
+# Added 2026-07-14, pricing verified against provider pages same day:
+#   Fireworks glm-5p2:       $1.40/$4.40 (Standard tier) docs.fireworks.ai/serverless/pricing
+#   Anthropic sonnet-5:      $3/$15 standard (intro $2/$10 through Aug 31) platform.claude.com/docs/en/about-claude/pricing
+#   Google gemini-3.5-flash: $1.50/$9.00   ai.google.dev/gemini-api/docs/pricing
+#   Google gemini-3.1-flash-lite: $0.25/$1.50  ai.google.dev/gemini-api/docs/pricing
+# Anthropic via OpenAI-compat /v1/ ; Google via OpenAI-compat /v1beta/openai/.
 
 defaults:
   max_steps: 40
@@ -40,6 +47,13 @@ models:
     api_key_env: FIREWORKS_API_KEY
     pricing: {input_per_mtok: 1.74, output_per_mtok: 3.48}
 
+  fw-glm-5p2:
+    provider: fireworks
+    model: accounts/fireworks/models/glm-5p2
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    pricing: {input_per_mtok: 1.40, output_per_mtok: 4.40}  # verified 2026-07-14, Fireworks Standard tier
+
   # --- OpenAI: frontier comparison ---
   oai-gpt-5.5:
     provider: openai
@@ -54,3 +68,30 @@ models:
     base_url: https://api.openai.com/v1
     api_key_env: OPENAI_API_KEY
     pricing: {input_per_mtok: 1.25, output_per_mtok: 10.00}
+
+  # --- Anthropic: second closed frontier (via OpenAI-compat endpoint) ---
+  ant-claude-sonnet-5:
+    provider: anthropic
+    model: claude-sonnet-5
+    base_url: https://api.anthropic.com/v1/
+    api_key_env: ANTHROPIC_API_KEY
+    # Standard rate (effective Sep 1, 2026). Intro promo is $2/$10 through Aug 31,
+    # 2026; using standard for a durable cost claim. NOTE: Sonnet 5's newer
+    # tokenizer emits ~30% more tokens for the same text, inflating real cost/task.
+    pricing: {input_per_mtok: 3.00, output_per_mtok: 15.00}  # verified 2026-07-14
+
+  # --- Google: second closed lab. 3.5-flash is a mid-tier closed point (not cheap);
+  #     3.1-flash-lite is the genuine cheap-closed vs cheap-open probe. ---
+  goog-gemini-3.5-flash:
+    provider: google
+    model: gemini-3.5-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    api_key_env: GOOGLE_API_KEY
+    pricing: {input_per_mtok: 1.50, output_per_mtok: 9.00}  # verified 2026-07-14
+
+  goog-gemini-3.1-flash-lite:
+    provider: google
+    model: gemini-3.1-flash-lite
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    api_key_env: GOOGLE_API_KEY
+    pricing: {input_per_mtok: 0.25, output_per_mtok: 1.50}  # verified 2026-07-14
