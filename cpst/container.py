@@ -8,9 +8,16 @@ code never runs on the host. The agent interacts with the task only through
 from __future__ import annotations
 
 import subprocess
+import threading
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+
+# Per-stream cap on captured command output. subprocess capture is unbounded, so a
+# task command that streams runaway output balloons the HOST process (not the
+# container) until the OS OOM-kills it. Keep at most this many bytes per stream and
+# discard the rest; the agent never needs megabytes of one command's output.
+MAX_EXEC_OUTPUT_BYTES = 2_000_000
 
 from .tasks import Task
 
@@ -102,23 +109,49 @@ class TaskContainer:
         for k, v in (env or {}).items():
             args += ["-e", f"{k}={v}"]
         args += [self.container_name, "bash", "-c", command]
-        # errors="replace": task commands can emit non-UTF-8 bytes (binaries,
-        # hashes) — never let decoding crash the run.
+        # Read stdout/stderr on threads with a per-stream byte cap, discarding the
+        # rest, so runaway output cannot OOM the host. Binary/non-UTF-8 output is
+        # decoded with errors="replace" and never crashes the run.
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        captured: dict[str, bytes] = {"stdout": b"", "stderr": b""}
+        truncated: dict[str, bool] = {"stdout": False, "stderr": False}
+
+        def _drain(stream, key: str) -> None:
+            buf = bytearray()
+            for chunk in iter(lambda: stream.read(65536), b""):
+                if len(buf) < MAX_EXEC_OUTPUT_BYTES:
+                    buf += chunk[: MAX_EXEC_OUTPUT_BYTES - len(buf)]
+                    if len(buf) >= MAX_EXEC_OUTPUT_BYTES:
+                        truncated[key] = True
+                # keep draining past the cap (and discarding) so a full pipe never
+                # blocks the process; memory stays bounded by MAX_EXEC_OUTPUT_BYTES.
+            captured[key] = bytes(buf)
+
+        threads = [
+            threading.Thread(target=_drain, args=(proc.stdout, "stdout"), daemon=True),
+            threading.Thread(target=_drain, args=(proc.stderr, "stderr"), daemon=True),
+        ]
+        for t in threads:
+            t.start()
         try:
-            proc = subprocess.run(
-                args, capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as e:
-            def _dec(x):
-                if isinstance(x, bytes):
-                    return x.decode("utf-8", errors="replace")
-                return x or ""
-            return ExecResult(
-                exit_code=124, stdout=_dec(e.stdout), stderr=_dec(e.stderr),
-                timed_out=True,
-            )
-        return ExecResult(proc.returncode, proc.stdout, proc.stderr)
+            proc.wait(timeout=timeout)
+            timed_out = False
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            timed_out = True
+        for t in threads:
+            t.join()
+
+        def _dec(key: str) -> str:
+            s = captured[key].decode("utf-8", errors="replace")
+            if truncated[key]:
+                s += f"\n[output truncated at {MAX_EXEC_OUTPUT_BYTES} bytes]"
+            return s
+
+        return ExecResult(
+            exit_code=124 if timed_out else (proc.returncode or 0),
+            stdout=_dec("stdout"), stderr=_dec("stderr"), timed_out=timed_out,
+        )
 
     def copy_in(self, src: Path, dest: str) -> None:
         """docker cp a host path into the container."""
