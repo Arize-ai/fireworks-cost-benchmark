@@ -44,6 +44,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", default=None, help="JSONL output path. Default results/run_<ts>.jsonl.")
     p.add_argument("--keep-containers", action="store_true", help="Do not remove containers/images (debug).")
     p.add_argument("--no-trace", action="store_true", help="Disable Arize AX tracing.")
+    p.add_argument("--resume", action="store_true",
+                   help="Append to --output, skipping (task,model,trial) cells already present. "
+                        "For recovering a crashed run without re-running completed cells.")
     return p.parse_args()
 
 
@@ -89,9 +92,32 @@ def main() -> int:
         for model_key in model_keys
         for trial in range(args.trials)
     ]
+
+    # Resume: skip cells already recorded in the output file, and append rather
+    # than truncate. Lets a crashed run finish only its missing cells.
+    write_mode = "w"
+    if args.resume and out_path.exists():
+        done_keys: set[tuple[str, str, int]] = set()
+        with out_path.open() as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                    done_keys.add((d["task_id"], d["model_key"], int(d["trial"])))
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    continue
+        before = len(jobs)
+        jobs = [j for j in jobs if j not in done_keys]
+        write_mode = "a"
+        print(f"Resume: {len(done_keys)} runs already in {out_path.name}; "
+              f"skipping {before - len(jobs)}, {len(jobs)} remaining.")
+
     total = len(jobs)
     print(f"Matrix: {len(task_ids)} tasks x {len(model_keys)} models x {args.trials} trials "
-          f"= {total} runs, concurrency={args.concurrency}")
+          f"= {len(task_ids) * len(model_keys) * args.trials} runs "
+          f"({total} to run), concurrency={args.concurrency}")
     print(f"Results -> {out_path}\n")
 
     def run_one(job) -> RunResult:
@@ -114,7 +140,7 @@ def main() -> int:
 
     results: list[RunResult] = []
     done = 0
-    with out_path.open("w") as fh:
+    with out_path.open(write_mode) as fh:
         with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
             futures = {pool.submit(run_one, job): job for job in jobs}
             for fut in as_completed(futures):
