@@ -15,4 +15,9 @@ __pycache__/
 results/*.log
 !results/subset_validation.log
 results/run_*.jsonl
+# scale-up intermediates: benchmark_40x6.jsonl is the merged dataset of record and
+# already contains both, so don't commit the halves or stop-backups.
+results/benchmark_40x6_pilot.jsonl
+results/benchmark_40x6_rest.jsonl
+results/*.stopbak
 .arize-tmp-traces/

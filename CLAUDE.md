@@ -148,28 +148,76 @@ header comment in `config/models.yaml` for source pages).
   (53% pass), kimi-k2.6 **$0.128** (77%), gpt-5.5 **$0.388** (83%). Escalation
   routing: blended **$0.11/success, 9/10 solved**. `tasks/subset.txt` (10 tasks) and
   this JSONL are the published study; keep them intact.
-- **Scale-up in progress** (make the study less thin): 9 models x 40 tasks x 6
-  trials = 2160 runs planned. Deltas landed:
-  - 4 models added to `config/models.yaml` (glm-5p2, sonnet-5, gemini-3.5-flash,
-    gemini-3.1-flash-lite), pricing verified 2026-07-14.
-  - Gemini thought_signature fix in `agent.py` (see Models section).
-  - `tasks/subset40.txt`: 40 validated tasks (8 easy / 20 medium / 12 hard),
-    superset of the original 10. Selected deterministically (seed 42) from 139 clean
-    candidates, oracle-validated (50 run, 36 passed, 6 held out for balance).
-  - **Pilot running:** 40 x 9 x 1 = 360 runs -> `results/benchmark_40x6_pilot.jsonl`
-    (trial 1 of 6). Purpose: measure real cost/run per provider before the full run.
+- **SCALE-UP STUDY COMPLETE (2026-07-16)**: `results/benchmark_40x6.jsonl`,
+  2160 runs = 40 tasks x 9 models x 6 trials. Verified balanced: every one of the
+  360 (task,model) cells has exactly 6 trials. 2.2% agent_errors. Total spend
+  **$520.45** (OpenAI $178, Fireworks $149, Anthropic $119, Google $75).
+
+  Cost per successful task (pass rate, $/success):
+  | gpt-oss-120b 33% **$0.054** | gemini-3.1-flash-lite 40% $0.063 |
+  kimi-k2.6 42% $0.384 | glm-5.2 42% $0.500 | deepseek-v4-pro 39% $0.588 |
+  gpt-5.5 67% $0.636 | gpt-5 41% $0.769 | sonnet-5 49% $1.014 |
+  gemini-3.5-flash 23% **$1.233** |
+
+  Headline findings:
+  - **gpt-oss-120b wins at $0.054/success despite the LOWEST pass rate (33%)**,
+    12x cheaper than gpt-5.5, 19x vs sonnet-5, 23x vs gemini-3.5-flash.
+  - **The finding replicated**: original 10-task study had gpt-oss vs gpt-5.5 at
+    $0.031 vs $0.388 = 12.5x. Here, with 4x tasks and a harder mix: 11.8x. The
+    ratio held. This is the strongest thing in the study; lead the blog with it.
+  - **gpt-5.5 honestly earns its price on capability**: best pass rate (67%) and
+    lowest retry tax (1.5x). It is the most reliable, just 12x the cost per unit of
+    completed work. Keep this nuance; it makes the piece credible.
+  - **gemini-3.5-flash is the trap**: worst pass (23%), worst $/success, 4.3x retry
+    tax, and 168 of its ~184 failures were `token_cap` (it spirals to the ceiling).
+  - Noise: 240 runs/model puts the pass-rate 95% CI at ~+/-6% (was ~+/-18%).
+  - 37/40 tasks solved by >=1 model. `gpt2-codegolf`, `path-tracing-reverse`,
+    `pcap-to-netflow` were solved by nobody; all oracle-validated, so legitimately
+    too hard, not harness bugs.
+  - Pass rates are much lower than the 10-task study because subset40 is far harder
+    (12 hard tasks vs 1). Do not compare pass rates across the two studies; compare
+    the cost/success RATIOS.
+- Modeling deltas that landed with the scale-up: 4 models added to
+  `config/models.yaml` (pricing verified 2026-07-14), Gemini thought_signature fix in
+  `agent.py`, `tasks/subset40.txt` (8 easy / 20 medium / 12 hard, superset of the
+  original 10, seed 42 from 139 candidates, oracle-validated).
 - Blog draft `blog/cost-per-successful-task.md` (untracked): framing -> why
   (inference subsidies ending) -> thesis -> result -> methodology -> interpretation.
   Zero em/en dashes. Placeholder `LINK-TO-SUBSIDIES-PIECE` for the user's article.
 
+## Running long matrices (learned the hard way, 2026-07-15/16)
+
+- **`container.exec` caps output at 2 MB/stream** (`MAX_EXEC_OUTPUT_BYTES`). Before
+  this, subprocess capture was unbounded: a task streaming runaway output (play-lord)
+  grew run.py RSS ~620 MB/s until macOS SIGKILLed it (rc=137). It always died on the
+  hard-task tail and looked like a concurrency/Docker-RAM problem; it was neither.
+  Do not remove the cap. Healthy run.py RSS is ~100-130 MB, flat.
+- **`run.py --resume`** skips (task,model,trial) cells already in `--output` and
+  appends. Any crash/stop is recoverable with zero re-run. Never restart a partial
+  matrix WITHOUT `--resume`: the plain path opens output with "w" and truncates.
+- **A partial matrix is task-biased**, not uniformly sampled: it runs tasks in
+  `subset40.txt` order, so a crash midway leaves the hard tail with zero coverage.
+  Never analyze a partial as-is; finish the missing cells.
+- **Launch background runs with `nohup` and RETURN from the Bash call immediately.**
+  Attaching a long monitor loop to the launching call gets that call killed at the
+  tool timeout and takes the whole process group (including the run) with it.
+  `setsid` does not exist on macOS. Monitor from separate/backgrounded calls.
+- **The run needs network and an awake machine.** Closing the lid offline wedges
+  run.py (alive but stuck on dead API calls). Use `scripts/stop_run.sh` before
+  travel and `scripts/resume_run.sh` after; `caffeinate -w <pid>` guards sleep.
+- Docker Desktop VM RAM was raised to ~24 GB during debugging. It was NOT the cause
+  and can be reverted; concurrency 12 is fine now that the leak is fixed.
+
 ## Open follow-ups
 
-- **Finish the scale-up run:** after the pilot, run the remaining 5 trials
-  (40 x 9 x 5 = 1800 runs), merge shards into `results/benchmark_40x6.jsonl`,
-  regenerate the report. Wait for the user's go-ahead before the big run.
+- **Rewrite `blog/cost-per-successful-task.md` around the 2160-run study.** Lead with
+  the replication (12.5x -> 11.8x across a 4x bigger, harder task set). Keep the
+  gpt-5.5 capability nuance and the gemini-3.5-flash token_cap trap.
 - Mirror the 4 new models' costs into Arize AX model-cost settings (UI only; the
   `ax` CLI 0.8.0 has no model-cost command). Study numbers are Python-driven and
   unaffected; this is dashboard parity only.
+- Consider re-running the escalation-routing analysis on the 40-task data (the
+  10-task study had blended $0.11/success, 9/10 solved).
 - The UTF-8 decode fix in `container.exec` landed AFTER the 90-run study, so that
   study has one `harness_error` (kimi on crack-7z-hash) that was the decode bug, now
   fixed. Re-running `crack-7z-hash` and `largest-eigenval` would clean up a couple of
