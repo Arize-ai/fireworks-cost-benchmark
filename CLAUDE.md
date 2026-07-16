@@ -170,6 +170,17 @@ header comment in `config/models.yaml` for source pages).
     completed work. Keep this nuance; it makes the piece credible.
   - **gemini-3.5-flash is the trap**: worst pass (23%), worst $/success, 4.3x retry
     tax, and 168 of its ~184 failures were `token_cap` (it spirals to the ceiling).
+  - **Routing** (`scripts/routing.py`, run it on the JSONL): oracle routing (cheapest
+    model that reliably solves each task) = **$0.223/success covering 32/40**, vs the
+    best single model gpt-5.5 at $0.636 covering 25/40. So routing wins on BOTH cost
+    and coverage. Deployable escalation (gpt-oss -> flash-lite -> kimi -> gpt-5.5) =
+    **$0.527/success, 32.3/40 per pass**, still beating gpt-5.5 alone on both. Naive
+    escalation through all 9 models is a **trap at $1.195/success**, worse than every
+    single model (you pay the whole ladder on the ~6 tasks nobody solves).
+  - **Coverage nuance (important, the 10-task study hid this):** gpt-oss-120b reliably
+    (>=4/6) solves only **8/40** tasks; gpt-5.5 solves **25/40**. The cheap model is
+    cheap partly because it only wins tasks it can win. $/success and coverage are
+    different questions. Do not present gpt-oss as a drop-in frontier replacement.
   - Noise: 240 runs/model puts the pass-rate 95% CI at ~+/-6% (was ~+/-18%).
   - 37/40 tasks solved by >=1 model. `gpt2-codegolf`, `path-tracing-reverse`,
     `pcap-to-netflow` were solved by nobody; all oracle-validated, so legitimately
@@ -216,8 +227,8 @@ header comment in `config/models.yaml` for source pages).
 - Mirror the 4 new models' costs into Arize AX model-cost settings (UI only; the
   `ax` CLI 0.8.0 has no model-cost command). Study numbers are Python-driven and
   unaffected; this is dashboard parity only.
-- Consider re-running the escalation-routing analysis on the 40-task data (the
-  10-task study had blended $0.11/success, 9/10 solved).
+- The old 10-task routing claim ("blended $0.11/success, 9/10 solved") is SUPERSEDED
+  by `scripts/routing.py` on the 40-task data; do not reuse the $0.11 number.
 - The UTF-8 decode fix in `container.exec` landed AFTER the 90-run study, so that
   study has one `harness_error` (kimi on crack-7z-hash) that was the decode bug, now
   fixed. Re-running `crack-7z-hash` and `largest-eigenval` would clean up a couple of
